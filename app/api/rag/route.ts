@@ -1,5 +1,13 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { embed, streamText, createUIMessageStream, createUIMessageStreamResponse, convertToModelMessages } from "ai";
+import {
+  embed,
+  streamText,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  convertToModelMessages,
+  generateId,
+  UIMessage,
+} from "ai";
 import postgres from "postgres";
 
 /**
@@ -14,26 +22,38 @@ import postgres from "postgres";
  * Body: { messages: UIMessage[], sourceFile?: string }
  * Returns: AI SDK UI message stream (consumed by useChat on the client)
  */
+interface InputMessage extends Omit<UIMessage, "parts"> {
+  content?: string;
+  parts?: UIMessage["parts"];
+}
+
 export async function POST(request: Request) {
   try {
     const {
       messages,
       sourceFile,
-    }: { messages: any[]; sourceFile?: string } = await request.json();
+    }: { messages: InputMessage[]; sourceFile?: string } = await request.json();
 
     if (!messages?.length) {
       return Response.json({ error: "No messages provided." }, { status: 400 });
     }
 
     // Ensure all messages have a parts array as required by AI SDK v6 convertToModelMessages
-    const normalizedMessages = messages.map((m) => {
+    const normalizedMessages: UIMessage[] = messages.map((m) => {
       if (!m.parts && typeof m.content === "string") {
         return {
-          ...m,
+          id: m.id,
+          role: m.role,
           parts: [{ type: "text", text: m.content }],
-        };
+          ...(m.metadata ? { metadata: m.metadata } : {}),
+        } as UIMessage;
       }
-      return m;
+      return {
+        id: m.id,
+        role: m.role,
+        parts: m.parts ?? [],
+        ...(m.metadata ? { metadata: m.metadata } : {}),
+      } as UIMessage;
     });
 
     const modelMessages = await convertToModelMessages(normalizedMessages);
@@ -52,8 +72,18 @@ export async function POST(request: Request) {
 
     const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
+    const responseId = generateId();
+    const idGenerator = () => responseId;
+
     const stream = createUIMessageStream({
+      originalMessages: normalizedMessages,
+      generateId: idGenerator,
       execute: async ({ writer }) => {
+        writer.write({
+          type: "start",
+          messageId: responseId,
+        });
+
         // ── Step 0: Embed the user query ───────────────────────────────────────
         writer.write({
           type: "data-step",
@@ -163,7 +193,12 @@ ${contextBlock}
           messages: modelMessages,
         });
 
-        writer.merge(result.toUIMessageStream());
+        writer.merge(
+          result.toUIMessageStream({
+            originalMessages: normalizedMessages,
+            generateMessageId: idGenerator,
+          })
+        );
       },
       onError: (error) =>
         `Stream error: ${(error as Error).message ?? "Unknown error"}`,
