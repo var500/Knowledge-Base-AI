@@ -49,7 +49,7 @@ async function main() {
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
 
   // ── 2. Connect and run raw SQL ────────────────────────────────────────────
-  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
 
   // ─────────────────────────────────────────────────────────────────────────
   // THE KEY QUERY — this is what Week 3 is all about:

@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     // 2. Run the raw SQL cosine distance query against pgvector
     //    <=> is the pgvector cosine distance operator
     //    1 - distance = cosine similarity
-    const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+    const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
 
     const modeFilter = mode === "all" ? sql`` : sql`WHERE chunk_mode = ${mode}`;
 

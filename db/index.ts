@@ -9,6 +9,6 @@ import * as schema from "./schema";
  * The `max: 1` ensures we don't open more connections than the
  * Supabase session pooler can handle in a serverless environment.
  */
-const client = postgres(process.env.DATABASE_URL!, { max: 1 });
+const client = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
 
 export const db = drizzle(client, { schema });

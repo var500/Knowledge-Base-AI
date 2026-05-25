@@ -105,7 +105,7 @@ export async function POST(request: Request) {
           transient: true,
         });
 
-        const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+        const sql = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
         const modeFilter = sourceFile ? sql`WHERE source_file = ${sourceFile}` : sql``;
 
         const retrieved = await sql`

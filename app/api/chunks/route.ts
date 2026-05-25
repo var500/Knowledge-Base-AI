@@ -9,7 +9,7 @@ import { asc } from "drizzle-orm";
 const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 function getDb() {
-  const client = postgres(process.env.DATABASE_URL!, { max: 1 });
+  const client = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
   return { db: drizzle(client, { schema: { docChunks } }), client };
 }
 
